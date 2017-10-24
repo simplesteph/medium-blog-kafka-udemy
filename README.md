@@ -37,7 +37,7 @@ java -jar udemy-reviews-producer/target/uber-udemy-reviews-producer-1.0-SNAPSHOT
 ```
 
 # Video Tutorial:
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/YOUTUBE_VIDEO_ID_HERE/0.jpg)](https://www.youtube.com/watch?v=YOUTUBE_VIDEO_ID_HERE)
+[![Udemy Kafka End To End Video (medium blog)](https://img.youtube.com/vi/h5i94umfzMM/0.jpg)](https://www.youtube.com/watch?v=h5i94umfzMM)
 
 # Learning Kafka
 
