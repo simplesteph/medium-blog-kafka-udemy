@@ -1,0 +1,20 @@
+[
+{"namespace": "com.github.simplesteph.avro.udemy",
+  "type": "record",
+  "name": "CourseStatistic",
+  "fields": [
+    {"name": "course_id", "type": "long", "default": -1, "doc": "Course ID in Udemy's DB"},
+    {"name": "course_title", "type": "string", "default": "", "doc": "Course Title"},
+    {"name": "average_rating",  "type": "double", "default": 0},
+    {"name": "count_reviews",  "type": "long", "default": 0},
+    {"name": "count_five_stars",  "type": "long", "default": 0},
+    {"name": "count_four_stars",  "type": "long", "default": 0},
+    {"name": "count_three_stars",  "type": "long", "default": 0},
+    {"name": "count_two_stars",  "type": "long", "default": 0},
+    {"name": "count_one_star",  "type": "long", "default": 0},
+    {"name": "count_zero_star",  "type": "long", "default": 0},
+    {"name": "last_review_time",  "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "last review in aggregation"},
+    {"name": "sum_rating",  "type": "double", "default": 0}
+  ]
+}
+]

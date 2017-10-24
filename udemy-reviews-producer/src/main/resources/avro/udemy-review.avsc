@@ -1,0 +1,35 @@
+[
+{"namespace": "com.github.simplesteph.avro.udemy",
+  "type": "record",
+  "name": "User",
+  "fields": [
+    {"name": "id", "type": "long", "doc": "User ID in Udemy's DB"},
+    {"name": "title",  "type": "string"},
+    {"name": "name",  "type": "string", "doc": "first name"},
+    {"name": "display_name",  "type": "string"}
+  ]
+},
+{"namespace": "com.github.simplesteph.avro.udemy",
+  "type": "record",
+  "name": "Course",
+  "fields": [
+    {"name": "id", "type": "long", "doc": "Course ID in Udemy's DB"},
+    {"name": "title",  "type": "string" },
+    {"name": "url",  "type": "string" }
+  ]
+},
+{"namespace": "com.github.simplesteph.avro.udemy",
+  "type": "record",
+  "name": "Review",
+  "fields": [
+    {"name": "id", "type": "long", "doc": "Review ID as per Udemy's db" },
+    {"name": "title", "type": ["null", "string"], "default": null },
+    {"name": "content", "type": ["null", "string"], "default": null, "doc": "Review text if provided" },
+    {"name": "rating", "type": "string", "doc": "review value"},
+    {"name": "created",  "type": { "type" : "long", "logicalType" : "timestamp-millis" } },
+    {"name": "modified",  "type": { "type" : "long", "logicalType" : "timestamp-millis" } },
+    {"name": "user", "type": "com.github.simplesteph.avro.udemy.User"},
+    {"name": "course", "type": "com.github.simplesteph.avro.udemy.Course"}
+  ]
+}
+]

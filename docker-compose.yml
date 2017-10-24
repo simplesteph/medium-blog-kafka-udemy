@@ -1,0 +1,8 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+    postgres:
+        image: postgres:9
+        ports:
+          - 5432:5432
