@@ -72,8 +72,8 @@ public class FraudMain {
         KStream<Bytes, Review> validReviews = branches[0];
         KStream<Bytes, Review> fraudReviews = branches[1];
 
-        validReviews.to(appConfig.getValidTopicName());
-        fraudReviews.to(appConfig.getFraudTopicName());
+        validReviews.peek((k, review) -> log.info("Valid: " + review.getId())).to(appConfig.getValidTopicName());
+        fraudReviews.peek((k, review) -> log.info("!! Fraud !!: " + review.getId())).to(appConfig.getFraudTopicName());
 
         return new KafkaStreams(builder, config);
     }
