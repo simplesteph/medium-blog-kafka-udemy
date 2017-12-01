@@ -46,3 +46,4 @@ If you want to explore all that Kafka has to offer, you can learn Kafka with my 
 - [Kafka Connect](https://goo.gl/qJM3mc)
 - [Kafka Streams](https://goo.gl/5jgwxQ)
 - [Kafka Setup and Administration](https://goo.gl/KYpRck)
+- [Confluent Schema Registry & REST Proxy](https://goo.gl/52Dv7d)
