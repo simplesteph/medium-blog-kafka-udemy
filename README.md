@@ -42,8 +42,8 @@ java -jar udemy-reviews-producer/target/uber-udemy-reviews-producer-1.0-SNAPSHOT
 # Learning Kafka
 
 If you want to explore all that Kafka has to offer, you can learn Kafka with my Udemy courses:
-- [Kafka for Beginners](https://goo.gl/vZGrSw)
-- [Kafka Connect](https://goo.gl/qJM3mc)
+- [Kafka for Beginners](https://goo.gl/Ri5t7D)
+- [Kafka Connect](https://goo.gl/YXLpoU)
 - [Kafka Streams](https://goo.gl/5jgwxQ)
-- [Kafka Setup and Administration](https://goo.gl/KYpRck)
+- [Kafka Setup and Administration](https://goo.gl/nkS6yE)
 - [Confluent Schema Registry & REST Proxy](https://goo.gl/52Dv7d)
