@@ -3,7 +3,6 @@
   "type": "record",
   "name": "User",
   "fields": [
-    {"name": "id", "type": "long", "doc": "User ID in Udemy's DB"},
     {"name": "title",  "type": "string"},
     {"name": "name",  "type": "string", "doc": "first name"},
     {"name": "display_name",  "type": "string"}

@@ -2,14 +2,12 @@ package com.github.simplesteph.kafka.producer.udemy.runnable;
 
 import com.github.simplesteph.avro.udemy.Review;
 import com.github.simplesteph.kafka.producer.udemy.AppConfig;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDe;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.LongSerializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +25,9 @@ public class ReviewsAvroProducerThread implements Runnable {
     private final KafkaProducer<Long, Review> kafkaProducer;
     private final String targetTopic;
 
-    public ReviewsAvroProducerThread(AppConfig appConfig, ArrayBlockingQueue<Review> reviewsQueue, CountDownLatch latch) {
+    public ReviewsAvroProducerThread(AppConfig appConfig,
+                                     ArrayBlockingQueue<Review> reviewsQueue,
+                                     CountDownLatch latch) {
         this.appConfig = appConfig;
         this.reviewsQueue = reviewsQueue;
         this.latch = latch;
@@ -44,6 +44,7 @@ public class ReviewsAvroProducerThread implements Runnable {
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
         properties.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, appConfig.getSchemaRegistryUrl());
+
         return new KafkaProducer<>(properties);
     }
 

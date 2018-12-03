@@ -54,7 +54,6 @@ public class UdemyRESTClientTest {
                 "\"modified\": \"2017-03-31T21:23:04Z\",\n" +
                 "\"user\": {\n" +
                 "\"_class\": \"user\",\n" +
-                "\"id\": 30105149,\n" +
                 "\"title\": \"Renato Dias Santana\",\n" +
                 "\"name\": \"Renato Dias\",\n" +
                 "\"display_name\": \"Renato Dias Santana\"\n" +
@@ -89,7 +88,6 @@ public class UdemyRESTClientTest {
 
         User user = udemyRESTClient.jsonToUser(json.getObject());
         assertEquals(user.getDisplayName(), "Tintu Pathrose");
-        assertEquals(user.getId(), (Long) 30660398L);
         assertEquals(user.getName(), "Tintu");
         assertEquals(user.getTitle(), "Tintu Pathrose");
     }

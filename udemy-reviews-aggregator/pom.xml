@@ -8,7 +8,6 @@
     <artifactId>udemy-reviews-aggregator</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-
     <repositories>
         <repository>
             <id>confluent</id>
@@ -16,10 +15,9 @@
         </repository>
     </repositories>
 
-
     <properties>
-        <kafka.version>0.11.0.1</kafka.version>
-        <confluent.version>3.3.0</confluent.version>
+        <kafka.version>1.1.1</kafka.version>
+        <confluent.version>5.0.1</confluent.version>
         <avro.version>1.8.2</avro.version>
         <unirest.version>1.4.9</unirest.version>
         <junit.version>4.12</junit.version>
@@ -27,10 +25,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-
     <dependencies>
 
-        <!--project dependencies -->
+        <!-- project dependencies -->
         <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -43,11 +40,13 @@
             <artifactId>kafka-avro-serializer</artifactId>
             <version>${confluent.version}</version>
         </dependency>
+
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-streams-avro-serde</artifactId>
             <version>${confluent.version}</version>
         </dependency>
+
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-schema-registry-client</artifactId>
@@ -59,12 +58,12 @@
             <artifactId>avro</artifactId>
             <version>${avro.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro-maven-plugin</artifactId>
             <version>${avro.version}</version>
         </dependency>
-
 
         <!--for logging purposes-->
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
@@ -93,6 +92,7 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>com.github.simplesteph.kafka.producer</groupId>
             <artifactId>udemy-reviews-producer</artifactId>
@@ -104,6 +104,7 @@
     <build>
         <plugins>
             <!--force java 8-->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -113,7 +114,6 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
-
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -154,6 +154,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <!--force discovery of generated classes-->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -175,6 +176,7 @@
                 </executions>
             </plugin>
         </plugins>
+
     </build>
 
 </project>
