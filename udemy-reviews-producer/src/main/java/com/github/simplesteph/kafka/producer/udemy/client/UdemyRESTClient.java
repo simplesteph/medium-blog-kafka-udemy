@@ -14,7 +14,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,10 +42,11 @@ public class UdemyRESTClient {
         if (nextPage >= 1) {
             List<Review> result = reviewApi(pageSize, nextPage).getReviewList();
             nextPage -= 1;
+
             return result;
-        } else {
-            return Collections.emptyList();
         }
+
+        return Collections.emptyList();
     }
 
     public ReviewApiResponse reviewApi(Integer pageSize, Integer page) throws HttpException {
@@ -56,7 +56,7 @@ public class UdemyRESTClient {
             jsonResponse = Unirest.get(url)
                     .queryString("page", page)
                     .queryString("page_size", pageSize)
-                    .queryString("fields[course_review]", "@default,course")
+                    .queryString("fields[course_review]", "title,content,rating,created,modified,user_modified,user,course")
                     .asJson();
         } catch (UnirestException e) {
             throw new HttpException(e.getMessage());
@@ -69,10 +69,11 @@ public class UdemyRESTClient {
             String previous = body.optString("previous");
             List<Review> reviews = this.convertResults(body.getJSONArray("results"));
             ReviewApiResponse reviewApiResponse = new ReviewApiResponse(count, next, previous, reviews);
+
             return reviewApiResponse;
-        } else {
-            throw new HttpException("Udemy API Unavailable");
         }
+
+        throw new HttpException("Udemy API Unavailable");
     }
 
     public List<Review> convertResults(JSONArray resultsJsonArray) {
@@ -101,10 +102,10 @@ public class UdemyRESTClient {
 
     public User jsonToUser(JSONObject userJson) {
         User.Builder userBuilder = User.newBuilder();
-        userBuilder.setDisplayName(userJson.getString("display_name"));
-        userBuilder.setName(userJson.getString("name"));
-        userBuilder.setId(userJson.getLong("id"));
         userBuilder.setTitle(userJson.getString("title"));
+        userBuilder.setName(userJson.getString("name"));
+        userBuilder.setDisplayName(userJson.getString("display_name"));
+
         return userBuilder.build();
     }
 
@@ -113,6 +114,7 @@ public class UdemyRESTClient {
         courseBuilder.setId(courseJson.getLong("id"));
         courseBuilder.setTitle(courseJson.getString("title"));
         courseBuilder.setUrl(courseJson.getString("url"));
+
         return courseBuilder.build();
     }
 

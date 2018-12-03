@@ -5,19 +5,16 @@ import com.typesafe.config.ConfigFactory;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Properties;
 
 public class FraudMain {
@@ -59,11 +56,11 @@ public class FraudMain {
         return config;
     }
 
-    private KafkaStreams createTopology(Properties config){
-
-        KStreamBuilder builder = new KStreamBuilder();
+    private KafkaStreams createTopology(Properties config) {
+        StreamsBuilder builder = new StreamsBuilder();
 
         KStream<Bytes, Review> udemyReviews = builder.stream(appConfig.getSourceTopicName());
+
         KStream<Bytes, Review>[] branches = udemyReviews.branch(
                 (k, review) -> isValidReview(review),
                 (k, review) -> true
@@ -75,7 +72,7 @@ public class FraudMain {
         validReviews.peek((k, review) -> log.info("Valid: " + review.getId())).to(appConfig.getValidTopicName());
         fraudReviews.peek((k, review) -> log.info("!! Fraud !!: " + review.getId())).to(appConfig.getFraudTopicName());
 
-        return new KafkaStreams(builder, config);
+        return new KafkaStreams(builder.build(), config);
     }
 
 

@@ -7,9 +7,14 @@ import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.Consumed;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,22 +65,26 @@ public class AggregatorMain {
     }
 
     private KafkaStreams createTopology(Properties config) {
-
         // define a few serdes that will be useful to us later
         SpecificAvroSerde<Review> reviewSpecificAvroSerde = new SpecificAvroSerde<>();
-        reviewSpecificAvroSerde.configure(Collections.singletonMap(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, appConfig.getSchemaRegistryUrl()), false);
         SpecificAvroSerde<CourseStatistic> courseStatisticSpecificAvroSerde = new SpecificAvroSerde<>();
+
+        reviewSpecificAvroSerde.configure(Collections.singletonMap(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, appConfig.getSchemaRegistryUrl()), false);
         courseStatisticSpecificAvroSerde.configure(Collections.singletonMap(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, appConfig.getSchemaRegistryUrl()), false);
+
         Serdes.LongSerde longSerde = new Serdes.LongSerde();
         Serdes.StringSerde stringSerde = new Serdes.StringSerde();
 
-
-        KStreamBuilder builder = new KStreamBuilder();
-
+        StreamsBuilder builder = new StreamsBuilder();
 
         // we build our stream with a timestamp extractor
-        KStream<String, Review> validReviews = builder.stream( new ReviewTimestampExtractor(), longSerde, reviewSpecificAvroSerde,  appConfig.getValidTopicName())
-                .selectKey(((key, review) -> review.getCourse().getId().toString()));
+        KStream<String, Review> validReviews = builder.stream(
+                appConfig.getValidTopicName(),
+                Consumed.with(longSerde,
+                reviewSpecificAvroSerde,
+                new ReviewTimestampExtractor(),
+                null)
+        ).selectKey(((key, review) -> review.getCourse().getId().toString()));
 
         // we build a long term topology (since inception)
         KTable<String, CourseStatistic> longTermCourseStats =
@@ -84,6 +93,8 @@ public class AggregatorMain {
                         this::reviewAggregator,
                         courseStatisticSpecificAvroSerde
                 );
+
+        // long term stats
         longTermCourseStats.toStream().to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getLongTermStatsStatsTopicName());
 
         // we build a 90 days average
@@ -95,7 +106,7 @@ public class AggregatorMain {
         TimeWindows timeWindows = TimeWindows.of(windowSizeMs).advanceBy(advanceMs);
 
         KTable<Windowed<String>, CourseStatistic> windowedCourseStatisticKTable = validReviews
-                .filter((k, review) -> !isReviewExpired(review, windowSizeMs)) //recent reviews
+                .filter((k, review) -> !isReviewExpired(review, windowSizeMs)) // recent reviews
                 .groupByKey().aggregate(
                         this::emptyStats,
                         this::reviewAggregator,
@@ -110,6 +121,7 @@ public class AggregatorMain {
                 .peek(((key, value) -> log.info(value.toString())))
                 .selectKey((k, v) -> k.key());
 
+        // recent stats
         recentStats.to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getRecentStatsTopicName());
 
 
@@ -143,11 +155,12 @@ public class AggregatorMain {
 //                .peek(((key, value) -> log.info(value.toString())))
 //                .to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getRecentStatsTopicName() + "-low-api");
 
-        return new KafkaStreams(builder, config);
+        return new KafkaStreams(builder.build(), config);
     }
 
     private boolean keepCurrentWindow(Windowed<String> window, long advanceMs) {
         long now = System.currentTimeMillis();
+
         return window.window().end() > now &&
                 window.window().end() < now + advanceMs;
     }
@@ -157,16 +170,21 @@ public class AggregatorMain {
     }
 
     private CourseStatistic emptyStats() {
-        return CourseStatistic.newBuilder().setLastReviewTime(new DateTime(0L)).build();
+        return CourseStatistic.newBuilder()
+                .setLastReviewTime(new DateTime(0L))
+                .build();
     }
 
     private CourseStatistic reviewAggregator(String courseId, Review newReview, CourseStatistic currentStats) {
         CourseStatistic.Builder courseStatisticBuilder = CourseStatistic.newBuilder(currentStats);
+
         courseStatisticBuilder.setCourseId(newReview.getCourse().getId());
         courseStatisticBuilder.setCourseTitle(newReview.getCourse().getTitle());
+
         String reviewRating = newReview.getRating().toString();
         // increase or decrease?
         Integer incOrDec = (reviewRating.contains("-")) ? -1 : 1;
+
         switch (reviewRating.replace("-", "")) {
             case "0.5":
                 courseStatisticBuilder.setCountZeroStar(courseStatisticBuilder.getCountZeroStar() + incOrDec);
@@ -191,6 +209,7 @@ public class AggregatorMain {
                 courseStatisticBuilder.setCountFiveStars(courseStatisticBuilder.getCountFiveStars() + incOrDec);
                 break;
         }
+
         Long newCount = courseStatisticBuilder.getCountReviews() + incOrDec;
         Double newSumRating = courseStatisticBuilder.getSumRating() + new Double(newReview.getRating().toString());
         Double newAverageRating = newSumRating / newCount;
@@ -198,16 +217,13 @@ public class AggregatorMain {
         courseStatisticBuilder.setCountReviews(newCount);
         courseStatisticBuilder.setSumRating(newSumRating);
         courseStatisticBuilder.setAverageRating(newAverageRating);
-        courseStatisticBuilder.setLastReviewTime(
-                latest(courseStatisticBuilder.getLastReviewTime(), newReview.getCreated()));
+        courseStatisticBuilder.setLastReviewTime(latest(courseStatisticBuilder.getLastReviewTime(), newReview.getCreated()));
 
         return courseStatisticBuilder.build();
     }
 
-    private DateTime latest(DateTime a, DateTime b)
-    {
+    private DateTime latest(DateTime a, DateTime b) {
         return a.isAfter(b) ? a : b;
     }
-
 
 }

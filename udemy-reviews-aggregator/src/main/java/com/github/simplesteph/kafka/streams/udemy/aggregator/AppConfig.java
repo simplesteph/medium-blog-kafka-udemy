@@ -20,7 +20,6 @@ public class AppConfig {
         this.longTermStatsStatsTopicName = config.getString("kafka.long.term.stats.topic.name");
     }
 
-
     public String getBootstrapServers() {
         return bootstrapServers;
     }
@@ -44,6 +43,5 @@ public class AppConfig {
     public String getLongTermStatsStatsTopicName() {
         return longTermStatsStatsTopicName;
     }
-
 
 }
