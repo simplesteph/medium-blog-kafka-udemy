@@ -7,18 +7,20 @@ import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.Consumed;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.TimeWindows;
-import org.apache.kafka.streams.kstream.Windowed;
+import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.StoreBuilder;
+import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.WindowStore;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -51,11 +53,11 @@ public class AggregatorMain {
         config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, appConfig.getBootstrapServers());
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        // we disable the cache to demonstrate all the "steps" involved in the transformation - not recommended in prod
-        config.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0");
+        // we can disable the cache to demonstrate all the "steps" involved in the transformation - not recommended in prod
+//        config.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0");
 
         // Exactly once processing!!
-        config.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
+//        config.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
 
         config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
         config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
@@ -88,30 +90,35 @@ public class AggregatorMain {
 
         // we build a long term topology (since inception)
         KTable<String, CourseStatistic> longTermCourseStats =
-                validReviews.groupByKey().aggregate(
+                validReviews.groupByKey().<CourseStatistic>aggregate(
                         this::emptyStats,
                         this::reviewAggregator,
-                        courseStatisticSpecificAvroSerde
+                        Materialized.<String, CourseStatistic, KeyValueStore<Bytes, byte[]>>as("long-term-stats")
+                                .withValueSerde(courseStatisticSpecificAvroSerde)
                 );
 
         // long term stats
-        longTermCourseStats.toStream().to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getLongTermStatsStatsTopicName());
+        longTermCourseStats.toStream().to(appConfig.getLongTermStatsStatsTopicName(), Produced.with(stringSerde, courseStatisticSpecificAvroSerde));
 
         // we build a 90 days average
 
         // A hopping time window with a size of 91 days and an advance interval of 1 day.
         // the windows are aligned with epoch
-        long windowSizeMs = TimeUnit.DAYS.toMillis(91);
-        long advanceMs = TimeUnit.DAYS.toMillis(1);
-        TimeWindows timeWindows = TimeWindows.of(windowSizeMs).advanceBy(advanceMs);
+        Duration windowSizeDuration = Duration.ofDays(91);
+        Duration advanceDuration = Duration.ofDays(1);
+        long windowSizeMs = windowSizeDuration.toMillis();
+        long advanceMs = advanceDuration.toMillis();
+        TimeWindows timeWindows = TimeWindows.of(windowSizeDuration).advanceBy(advanceDuration);
 
         KTable<Windowed<String>, CourseStatistic> windowedCourseStatisticKTable = validReviews
                 .filter((k, review) -> !isReviewExpired(review, windowSizeMs)) // recent reviews
-                .groupByKey().aggregate(
+                .groupByKey()
+                .windowedBy(timeWindows)
+                .<CourseStatistic>aggregate(
                         this::emptyStats,
                         this::reviewAggregator,
-                        timeWindows,
-                        courseStatisticSpecificAvroSerde
+                        Materialized.<String, CourseStatistic, WindowStore<Bytes, byte[]>>as("recent-stats")
+                        .withValueSerde(courseStatisticSpecificAvroSerde)
                 );
 
         KStream<String, CourseStatistic> recentStats = windowedCourseStatisticKTable
@@ -122,18 +129,19 @@ public class AggregatorMain {
                 .selectKey((k, v) -> k.key());
 
         // recent stats
-        recentStats.to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getRecentStatsTopicName());
+        recentStats.to(appConfig.getRecentStatsTopicName(), Produced.with(stringSerde, courseStatisticSpecificAvroSerde));
 
 
         // for learning purposes: Using the lower level API (uncomment the code)
 //        // Create a state store manually.
 //        // It will contain only the most recent reviews
-//        StateStoreSupplier recentReviewsStore = Stores.create("RecentReviewsStore")
-//                .withKeys(Serdes.Long())
-//                .withValues(reviewSpecificAvroSerde)
-//                // back it up in RocksDB
-//                .persistent()
-//                .build();
+//        StoreBuilder<KeyValueStore<Long, Review>> recentReviewsStore =
+//                Stores.keyValueStoreBuilder(
+//                        Stores.persistentKeyValueStore("persistent-counts"),
+//                        Serdes.Long(),
+//                        reviewSpecificAvroSerde
+//                );
+//
 //
 //        // add the store to the topology so it can be referenced
 //        builder.addStateStore(recentReviewsStore);
@@ -144,16 +152,18 @@ public class AggregatorMain {
 //                                        recentReviewsStore.name());
 //
 //
-//        // we build a long term topology (since inception)
-//        KTable<String, CourseStatistic> recentCourseStats = recentReviews.groupByKey().aggregate(
+//        // we build a recent stats topology
+//        KTable<String, CourseStatistic> recentCourseStats = recentReviews.groupByKey()
+//                .<CourseStatistic>aggregate(
 //                this::emptyStats,
 //                this::reviewAggregator,
-//                courseStatisticSpecificAvroSerde
+//                        Materialized.<String, CourseStatistic, KeyValueStore<Bytes, byte[]>>as("recent-stats-alt")
+//                                .withValueSerde(courseStatisticSpecificAvroSerde)
 //        );
 //
 //        recentCourseStats.toStream()
 //                .peek(((key, value) -> log.info(value.toString())))
-//                .to(stringSerde, courseStatisticSpecificAvroSerde, appConfig.getRecentStatsTopicName() + "-low-api");
+//                .to(appConfig.getRecentStatsTopicName()+"-low-api", Produced.with(stringSerde, courseStatisticSpecificAvroSerde));
 
         return new KafkaStreams(builder.build(), config);
     }

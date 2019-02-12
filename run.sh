@@ -2,8 +2,8 @@
 
 ### SETUP
 
-# Download Confluent Platform 3.3.0 https://www.confluent.io/download/
-# Unzip and add confluent-3.3.0/bin to your PATH
+# Download Confluent Platform 5.1.1 https://www.confluent.io/download/
+# Unzip and add confluent-5.1.1/bin to your PATH
 
 # Download and install Docker for Mac / Windows / Linux and do
 docker-compose up -d

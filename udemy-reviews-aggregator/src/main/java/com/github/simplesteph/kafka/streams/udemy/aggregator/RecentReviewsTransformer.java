@@ -4,14 +4,16 @@ import com.github.simplesteph.avro.udemy.Review;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.PunctuationType;
+import org.apache.kafka.streams.processor.Punctuator;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class RecentReviewsTransformer implements Transformer<String, Review, KeyValue<String, Review>> {
 
@@ -37,7 +39,10 @@ public class RecentReviewsTransformer implements Transformer<String, Review, Key
         this.context = context;
 
         // call this processor's punctuate() method every 10 minutes to clean up for old data
-        this.context.schedule(TimeUnit.MINUTES.toMillis(10));
+        this.context.schedule(Duration.ofMinutes(10),
+                PunctuationType.STREAM_TIME,
+                this::punctuate
+                );
 
         // retrieve the key-value store named "Counts"
         reviewStore = (KeyValueStore<Long, Review>) this.context.getStateStore(stateStoreName);
@@ -62,8 +67,7 @@ public class RecentReviewsTransformer implements Transformer<String, Review, Key
     }
 
     // every punctuate we expire old reviews
-    @Override
-    public KeyValue<String, Review> punctuate(long currentTime) {
+    public void punctuate(long currentTime) {
         if (minTimestampInStore + timeToKeepAReview < currentTime && reviewStore.approximateNumEntries() > 0) {
             log.info("let's expire data!");
             // invalidate the min timestamp in store as we're going to re-compute it
@@ -89,8 +93,6 @@ public class RecentReviewsTransformer implements Transformer<String, Review, Key
                 reviewStore.delete(key);
             }
         }
-        // this is okay because we called this.context.forward() multiple times before
-        return null;
     }
 
     private Boolean isReviewExpired(Review review, Long currentTime, Long maxTime) {
