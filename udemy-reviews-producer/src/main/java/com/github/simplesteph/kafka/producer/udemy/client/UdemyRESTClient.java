@@ -35,6 +35,8 @@ public class UdemyRESTClient {
         count = reviewApi(1, 1).getCount();
         // we fetch from the last page
         nextPage = count / pageSize;
+        if(count % pageSize > 0)
+            nextPage += 1;
     }
 
     public List<Review> getNextReviews() throws HttpException {
