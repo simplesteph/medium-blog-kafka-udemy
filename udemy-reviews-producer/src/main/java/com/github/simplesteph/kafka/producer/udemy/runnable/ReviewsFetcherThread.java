@@ -49,7 +49,7 @@ public class ReviewsFetcherThread implements Runnable {
                     e.printStackTrace();
                     Thread.sleep(500);
                 } finally {
-                    Thread.sleep(50);
+                    Thread.sleep(200);
                 }
             }
         } catch (InterruptedException e) {
